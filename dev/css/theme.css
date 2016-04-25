@@ -6779,3 +6779,20 @@ button.close {
     border-radius: 10px;
     overflow: hidden;
 }
+.review-box {
+    position: absolute;
+    display: none;
+    width:220px;
+    border-radius: 5px;
+    overflow: hidden;
+    background-color: #ffffff;
+
+}
+.review-box__header {
+    background-color: #ff8663;
+    padding: 10px;
+    color: #ffffff;
+}
+.reviews {
+    min-height: 150px;
+}

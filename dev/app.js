@@ -1,18 +1,17 @@
-
-new Promise (function(resolve) {
+new Promise(function (resolve) {
 
     var cords = [];
-    navigator.geolocation.getCurrentPosition(function(pos) {
+    navigator.geolocation.getCurrentPosition(function (pos) {
         cords.push(pos.coords.latitude);
         cords.push(pos.coords.longitude);
         resolve(cords);
     });
 
-}).then(function(cords) {
+}).then(function (cords) {
     var myMap;
     // Дождёмся загрузки API и готовности DOM.
     ymaps.ready(init);
-    function init () {
+    function init() {
         // Создание экземпляра карты и его привязка к контейнеру с
         // заданным id ("map").
         myMap = new ymaps.Map('map', {
@@ -25,9 +24,22 @@ new Promise (function(resolve) {
         });
         myMap.events.add('click', function (e) {
             if (!myMap.balloon.isOpen()) {
-                var coords = e.get('coords');
-                ymaps.geocode(coords).then(function(res) {
+                var coords = e.get('coords'),
+                    clientCoords = e.getSourceEvent().originalEvent.clientPixels;
+                console.log(e.getSourceEvent());
+                reviewbox.style.display = "block";
+                reviewbox.style.top = clientCoords[1] + 'px';
+                reviewbox.style.left = clientCoords[0] + 'px';
+                ymaps.geocode(coords).then(function (res) {
+                    console.log(coords);
                     console.log(res.geoObjects.get(0).properties.get('text'));
+
+                    myPlacemark = new ymaps.Placemark(coords, {
+                        hintContent: 'Москва!',
+                        balloonContent: 'Столица России'
+                    });
+                    myMap.geoObjects.add(myPlacemark);
+
                 });
                 //console.log(adress);
                 //myMap.balloon.open(coords, {

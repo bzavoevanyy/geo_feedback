@@ -6,8 +6,19 @@
     <title>Document</title>
 </head>
 <body>
-<div class="wrapper">
-    <div class="map" id="map"></div>
+<div class="wrapper" id="map">
+    <!--<div class="map" id="map"></div>-->
+</div>
+<div class="review-box" id="reviewbox">
+    <div class="review-box__header">
+        Оставьте свой отзыв
+    </div>
+    <div class="reviews"></div>
+    <div class="your-review"></div>
+    <input type="text" class="your-name">
+    <input type="text" class="place">
+    <textarea name="review" id="" cols="30" rows="10" class="review"></textarea>
+    <button class="save">Сохранить</button>
 </div>
 </body>
 <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
