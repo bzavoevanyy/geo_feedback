@@ -4,10 +4,9 @@ var assert = require('assert'),
     server = http.createServer(function(request, response) {
         response.setHeader('Content-Type', 'application/json');
         response.setHeader('Access-Control-Allow-Origin', '*');
-
         parsePost(request).then(function(post) {
             var parsed = JSON.parse(post);
-
+            console.log(parsed.op);
             assert.equal(typeof parsed.op, 'string');
 
             switch (parsed.op.toLowerCase()) {
@@ -41,7 +40,7 @@ var assert = require('assert'),
                     storage[parsed.review.address].push(parsed.review);
 
                     console.log('A new review was added: [%s] - %s', parsed.review.address, parsed.review.place);
-
+                    console.log(storage);
                     return storage[parsed.review.address];
                 case 'get':
                     assert.equal(typeof parsed.address, 'string');
@@ -64,7 +63,7 @@ var assert = require('assert'),
         });
     });
 
-server.listen(3000, 'localhost');
+server.listen(3005, 'localhost');
 
 function parsePost(req) {
     return new Promise(function(resolve) {
@@ -75,9 +74,11 @@ function parsePost(req) {
         }
 
         req.on('data', function(chunk) {
+            //console.log(chunk);
             data += chunk;
         });
         req.on('end', function() {
+            //console.log(data);
             resolve(data);
         });
     });

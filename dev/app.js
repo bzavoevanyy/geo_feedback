@@ -1,14 +1,64 @@
+var source = document.getElementById('template').innerHTML;
+var template = Handlebars.compile(source);
+Handlebars.registerHelper('review', function() {
+    return new Handlebars.SafeString(
+        "<p>" + this.place + " - " + this.text + "</p>"
+    );
+});
+// Глобальные переменные
+var myMap,
+    placemark,
+    clusterer,
+    customItemContentLayout;
+body.addEventListener('click', function (e) {
+    if (e.target.className == 'save') { // сохраняем отзыв
+        var data = {
+            review: {
+                coords: {}
+            }
+        };
+        e.preventDefault();
+        var coords = document.getElementsByName('coords')[0].value.split(',');
+        data.op = 'add';
+        data.review.coords.x = coords[0];
+        data.review.coords.y = coords[1];
+        data.review.address = document.getElementsByClassName('review-box__header')[0].innerText.trim();
+        data.review.name = document.getElementsByName('name')[0].value;
+        data.review.place = document.getElementsByName('place')[0].value;
+        data.review.text = document.getElementsByName('text')[0].value;
+        server().add(data).then(function () {
+            hbswrap.innerHTML = "";
+            var d = new Date();
+            data.review.date = d.toDateString();
+            clusterer.add(addPlacemark(data.review));
+        });
+    } else if (e.target.id == 'address') { //клик по ссылке адреса
+        e.preventDefault();
+        var respond = e.target.innerText;
+        server().get(respond).then(function (response) {
+            myMap.balloon.close();
+            var res = JSON.parse(response)[0];
+            var address = res.address;
+            var obj = {
+                coords: [res.coords.x, res.coords.y],
+                address: address,
+                clientCoords: {top: e.clientY + 'px', left: e.clientX + 'px'},
+                reviews: JSON.parse(response)
+            };
+            showRevWin(obj); // выводим окно формы отзыва
+        });
+    } else if (e.target.id == "close") {
+        hbswrap.innerHTML = "";
+    }
+});
 new Promise(function (resolve) {
-
     var cords = [];
     navigator.geolocation.getCurrentPosition(function (pos) {
         cords.push(pos.coords.latitude);
         cords.push(pos.coords.longitude);
         resolve(cords);
     });
-
 }).then(function (cords) {
-    var myMap;
     // Дождёмся загрузки API и готовности DOM.
     ymaps.ready(init);
     function init() {
@@ -22,43 +72,133 @@ new Promise(function (resolve) {
         }, {
             searchControlProvider: 'yandex#search'
         });
-        myMap.events.add('click', function (e) {
-            if (!myMap.balloon.isOpen()) {
-                var coords = e.get('coords'),
-                    clientCoords = e.getSourceEvent().originalEvent.clientPixels;
-                console.log(e.getSourceEvent());
-                reviewbox.style.display = "block";
-                reviewbox.style.top = clientCoords[1] + 'px';
-                reviewbox.style.left = clientCoords[0] + 'px';
-                ymaps.geocode(coords).then(function (res) {
-                    console.log(coords);
-                    console.log(res.geoObjects.get(0).properties.get('text'));
-
-                    myPlacemark = new ymaps.Placemark(coords, {
-                        hintContent: 'Москва!',
-                        balloonContent: 'Столица России'
+        customItemContentLayout = ymaps.templateLayoutFactory.createClass(
+            // Флаг "raw" означает, что данные вставляют "как есть" без экранирования html.
+            '<h2 class=ballon_header>{{ properties.balloonContentHeader|raw }}</h2>' +
+            '<div class=ballon_body><a id="address" href="#">{{ properties.balloonContentBody|raw }}</a><br>{{properties.balloonContentReview|raw}}</div>' +
+            '<div class=ballon_footer>{{ properties.balloonContentFooter|raw }}</div>'
+        );
+        clusterer = new ymaps.Clusterer({
+            clusterDisableClickZoom: true,
+            clusterOpenBalloonOnClick: true,
+            // Устанавливаем стандартный макет балуна кластера "Карусель".
+            clusterBalloonContentLayout: 'cluster#balloonCarousel',
+            // Устанавливаем собственный макет.
+            clusterBalloonItemContentLayout: customItemContentLayout,
+            // Устанавливаем режим открытия балуна.
+            // В данном примере балун никогда не будет открываться в режиме панели.
+            clusterBalloonPanelMaxMapArea: 0,
+            // Устанавливаем размеры макета контента балуна (в пикселях).
+            clusterBalloonContentLayoutWidth: 200,
+            clusterBalloonContentLayoutHeight: 130,
+            // Устанавливаем максимальное количество элементов в нижней панели на одной странице
+            clusterBalloonPagerSize: 5
+        });
+        // Заполняем кластер геообъектами.
+        var placemarks = [];
+        server().all().then(function (response) {
+            var reviews = JSON.parse(response);
+            for (var prop in reviews) {
+                reviews[prop].forEach(function (obj) {
+                    var d = new Date(obj.date);
+                    obj.date = d.toDateString();
+                    placemark = addPlacemark(obj);
+                    placemark.events.add('click', function (e) {
+                        hbswrap.innerHTML = "";
                     });
-                    myMap.geoObjects.add(myPlacemark);
-
+                    placemarks.push(placemark);
+                })
+            }
+            clusterer.add(placemarks);
+            myMap.geoObjects.add(clusterer);
+        });
+        myMap.events.add('click', function (e) {
+            myMap.balloon.close();
+            var coords = e.get('coords'),
+                clientCoords = e.getSourceEvent().originalEvent.clientPixels;
+            ymaps.geocode(coords).then(function (res) {
+                var address = res.geoObjects.get(0).properties.get('text');
+                var obj = {
+                    coords: coords,
+                    address: address,
+                    clientCoords: {top: clientCoords[1] + 'px', left: clientCoords[0] + 'px'}
+                };
+                server().get(address).then(function (response) {
+                    obj.reviews = JSON.parse(response);
+                    showRevWin(obj);
                 });
-                //console.log(adress);
-                //myMap.balloon.open(coords, {
-                //    contentHeader:'Событие!',
-                //    contentBody:'<p>Кто-то щелкнул по карте.</p>' +
-                //    '<p>Координаты щелчка: ' + [
-                //        coords[0].toPrecision(6),
-                //        coords[1].toPrecision(6)
-                //    ].join(', ') + '</p>',
-                //    contentFooter:'<sup>Щелкните еще раз</sup>'
-                //});
-
-
-            }
-            else {
-                //myMap.balloon.close();
-            }
+            });
         });
     }
-
-
 });
+function showRevWin(obj) { // функция вывода окна отзыва
+    var html = template(obj);
+    hbswrap.innerHTML = html;
+}
+function addPlacemark(obj) { //функция добавления плейсмарка
+    return new ymaps.Placemark([obj.coords.x, obj.coords.y], {
+            // Устаналиваем данные, которые будут отображаться в балуне.
+            balloonContentHeader: obj.place,
+            balloonContentBody: obj.address,
+            balloonContentReview: obj.text,
+            balloonContentFooter: obj.date
+        }, {
+            balloonContentLayout: customItemContentLayout
+        }
+    );
+}
+function server() {
+    function respond() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'http://smelukov.com:3000', true);
+        return xhr;
+    }
+    return {
+        add: function (data) {
+            return new Promise(function (resolve, reject) {
+                var xhr = respond();
+                xhr.addEventListener('loadend', function () {
+                    if (xhr.status == 200) {
+                        resolve(xhr.response)
+                    } else {
+                        return reject('Ошибка сервера!');
+                    }
+                });
+                xhr.send(JSON.stringify(data));
+            }).catch(function (e) {
+                console.log(e);
+            })
+        },
+        get: function (data) {
+            return new Promise(function (resolve, reject) {
+                var xhr = respond();
+                xhr.addEventListener('loadend', function () {
+                    if (xhr.status == 200) {
+                        resolve(xhr.response)
+                    } else {
+                        return reject('Ошибка сервера!');
+                    }
+                });
+                xhr.send(JSON.stringify({op: 'get', address: data}));
+            }).catch(function (e) {
+                console.log(e);
+            })
+        },
+        all: function () {
+            return new Promise(function (resolve, reject) {
+                var xhr = respond();
+                xhr.addEventListener('loadend', function () {
+                    if (xhr.status == 200) {
+                        resolve(xhr.response)
+                    } else {
+                        return reject('Ошибка сервера!');
+                    }
+                });
+                xhr.send(JSON.stringify({op: 'all'}));
+            }).catch(function (e) {
+                console.log(e);
+            })
+
+        }
+    }
+}

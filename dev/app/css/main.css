@@ -20,8 +20,8 @@
 }
 .review-box {
     position: absolute;
-    display: none;
-    width:220px;
+    display: block;
+    width:300px;
     border-radius: 5px;
     overflow: hidden;
     background-color: #ffffff;
@@ -31,7 +31,17 @@
     background-color: #ff8663;
     padding: 10px;
     color: #ffffff;
+    position: relative;
 }
 .reviews {
     min-height: 150px;
+}
+.glyphicon-remove {
+    position: absolute;
+    right:10px;
+    top:10px;
+    cursor: pointer;
+}
+.title {
+    width:80%;
 }

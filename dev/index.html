@@ -4,23 +4,39 @@
     <meta charset="UTF-8">
     <link rel="stylesheet" href="css/theme.css">
     <title>Document</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.5/handlebars.min.js" type="text/javascript"></script>
 </head>
-<body>
+<body id="body">
 <div class="wrapper" id="map">
-    <!--<div class="map" id="map"></div>-->
+
 </div>
-<div class="review-box" id="reviewbox">
-    <div class="review-box__header">
-        Оставьте свой отзыв
-    </div>
-    <div class="reviews"></div>
-    <div class="your-review"></div>
-    <input type="text" class="your-name">
-    <input type="text" class="place">
-    <textarea name="review" id="" cols="30" rows="10" class="review"></textarea>
-    <button class="save">Сохранить</button>
-</div>
+<div id="hbswrap"></div>
 </body>
+<script id="template" type="text/x-handlebars-template">
+    <div class="review-box" id="reviewbox" style="top:{{{clientCoords.top}}}; left:{{{clientCoords.left}}}">
+        <div class="review-box__header"><p class="title">{{address}}</p>
+        <span id="close" class="glyphicon glyphicon-remove"></span>
+        </div>
+        <div class="reviews">
+            {{#each reviews}}
+            {{review}}
+            {{/each}}
+        </div>
+        <div class="your-review"></div>
+        <form>
+            <input type="text" name="coords" value="{{coords}}" hidden>
+            <p>Ваше имя</p>
+            <input name="name" type="text" class="your-name">
+            <p>Название заведения</p>
+            <input name="place" type="text" class="place">
+            <p>Ваш отзыв</p>
+            <textarea name="text" id="" cols="30" rows="10" class="review"></textarea>
+            <button type="submit" class="save">Сохранить</button>
+        </form>
+    </div>
+</script>
+
 <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
+
 <script src="app.js"></script>
 </html>
